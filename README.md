@@ -1,6 +1,6 @@
 # Ranking products using PL/pgSQL
 
-## To run test
+To run tests:
 
     createdb rank_test
     plsql#=> CREATE EXTENSION hstore;
