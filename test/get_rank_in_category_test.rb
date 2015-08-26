@@ -20,11 +20,4 @@ class GetRankInCategoryTest < Minitest::Test
 
     assert_equal nil, rank
   end
-
-  # ranking starts with 1
-  def test_returns_nil_for_zero_rank
-    rank = exec_first("SELECT ranked_get_rank_in_category(0, id) as rank FROM products;")["rank"]
-
-    assert_equal nil, rank
-  end
 end
