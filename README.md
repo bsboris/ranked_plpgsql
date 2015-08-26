@@ -1,5 +1,7 @@
 # Ranking products using PL/pgSQL
 
+[![Build Status](https://travis-ci.org/bsboris/ranked_plpgsql.svg?branch=master)](https://travis-ci.org/bsboris/ranked_plpgsql)
+
 To run tests:
 
     createdb rank_test
