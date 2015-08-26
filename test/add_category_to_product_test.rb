@@ -8,7 +8,7 @@ class AddCategoryToProductTest < MiniTest::Test
   # Первый товар добавляется с позицией 0.
 
   def test_sets_no_positions_when_no_categories
-    id = create_product("A")
+    id = exec_first("INSERT INTO products (title) VALUES ('A') RETURNING id;")["id"]
 
     assert_equal "", find_product_positions(id)
     assert_equal "{}", find_product_categories(id)
@@ -18,36 +18,36 @@ class AddCategoryToProductTest < MiniTest::Test
   # у него всегда должна быть какая-то позиция (значение в category_positions).
 
   def test_sets_position_when_it_have_category
-    id = create_product("A", [1])
+    id = exec_first("INSERT INTO products (title, categories_ids) VALUES ('A', '{1}') RETURNING id;")["id"]
 
     assert_equal "1=>0", find_product_positions(id)
     assert_equal "{1}", find_product_categories(id)
   end
 
   def test_sets_position_with_step_10000
-    create_product("A", [1])
-    id = create_product("B", [1])
+    exec_first("INSERT INTO products (title, categories_ids) VALUES ('A', '{1}');")
+    id = exec_first("INSERT INTO products (title, categories_ids) VALUES ('B', '{1}') RETURNING id;")["id"]
 
     assert_equal "1=>10000", find_product_positions(id)
     assert_equal "{1}", find_product_categories(id)
   end
 
   def test_sets_position_on_update
-    id = create_product("A", [1], { 1 => 10000 })
+    id = exec_first("INSERT INTO products (title, categories_ids, category_positions) VALUES ('A', '{1}', '1=>10000') RETURNING id;")["id"]
     exec("UPDATE products SET categories_ids = '{1, 2}' WHERE id = #{id};")
 
     assert_equal "1=>10000, 2=>0", find_product_positions(id)
   end
 
   def test_allows_manually_set_position
-    id = create_product("A", [1, 2], { 1 => 10000, 2 => 10000 })
+    id = exec_first("INSERT INTO products (title, categories_ids, category_positions) VALUES ('A', '{1, 2}', '1=>10000, 2=>10000') RETURNING id;")["id"]
     exec("UPDATE products SET categories_ids = '{1,2,3}', category_positions = category_positions || hstore('3', '999') WHERE id = #{id};")
 
     assert_equal "1=>10000, 2=>10000, 3=>999", find_product_positions(id)
   end
 
   def test_removes_positions_for_removed_categories
-    id = create_product("A", [1, 2, 3])
+    id = exec_first("INSERT INTO products (title, categories_ids) VALUES ('A', '{1, 2, 3}') RETURNING id;")["id"]
     exec("UPDATE products SET categories_ids = '{}' WHERE id = #{id};")
 
     assert_equal "", find_product_positions(id)
@@ -57,10 +57,10 @@ class AddCategoryToProductTest < MiniTest::Test
   # остальные товары (включая дубликат) сдвигаются вниз на размер шага.
 
   def test_moves_all_products_down_on_duplicate
-    id1 = create_product("A", [1], { 1 => 10000 })
-    id2 = create_product("B", [1], { 1 => 20000 })
-    id3 = create_product("C", [1], { 1 => 30000 })
-    id_new = create_product("D", [1], { 1 => 10000 })
+    id1 = exec_first("INSERT INTO products (title, categories_ids, category_positions) VALUES ('A', '{1}', '1=>10000') RETURNING id;")["id"]
+    id2 = exec_first("INSERT INTO products (title, categories_ids, category_positions) VALUES ('B', '{1}', '1=>20000') RETURNING id;")["id"]
+    id3 = exec_first("INSERT INTO products (title, categories_ids, category_positions) VALUES ('C', '{1}', '1=>30000') RETURNING id;")["id"]
+    id_new = exec_first("INSERT INTO products (title, categories_ids, category_positions) VALUES ('D', '{1}', '1=>10000') RETURNING id;")["id"]
 
     assert_equal "1=>10000", find_product_positions(id_new)
     assert_equal "1=>20000", find_product_positions(id1)
@@ -71,8 +71,8 @@ class AddCategoryToProductTest < MiniTest::Test
   # Значения позиций всегда уникальны.
 
   def test_positions_are_unique
-    id_old = create_product("A", [1, 2], { 1 => 10000, 2 => 10000 })
-    id_new = create_product("B", [1], { 1 => 10000 })
+    id_old = exec_first("INSERT INTO products (title, categories_ids, category_positions) VALUES ('A', '{1, 2}', '1=>10000, 2=>10000') RETURNING id;")["id"]
+    id_new = exec_first("INSERT INTO products (title, categories_ids, category_positions) VALUES ('B', '{1}', '1=>10000') RETURNING id;")["id"]
 
     assert_equal "1=>20000, 2=>10000", find_product_positions(id_old)
     assert_equal "1=>10000", find_product_positions(id_new)

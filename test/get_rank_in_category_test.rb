@@ -4,9 +4,9 @@ class GetRankInCategoryTest < Minitest::Test
   def setup
     super
 
-    @id_a = create_product("A", [1], { 1 => 0 })
-    @id_b = create_product("B", [1], { 1 => 10000 })
-    @id_c = create_product("C", [1], { 1 => 20000 })
+    @id_a = exec_first("INSERT INTO products (title, categories_ids, category_positions) VALUES ('A', '{1}', '1=>0') RETURNING id;")["id"]
+    @id_b = exec_first("INSERT INTO products (title, categories_ids, category_positions) VALUES ('A', '{1}', '1=>10000') RETURNING id;")["id"]
+    @id_c = exec_first("INSERT INTO products (title, categories_ids, category_positions) VALUES ('A', '{1}', '1=>20000') RETURNING id;")["id"]
   end
 
   def test_returns_rank_in_category

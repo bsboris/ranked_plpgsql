@@ -10,15 +10,15 @@ class GetLastPositionInCategoryTest < Minitest::Test
   end
 
   def test_returns_null_if_no_products_in_category
-    create_product("A", [1])
-    create_product("B", [1])
+    exec_first("INSERT INTO products (title, categories_ids) VALUES ('A', '{1}');")
+    exec_first("INSERT INTO products (title, categories_ids) VALUES ('B', '{1}');")
 
     assert_equal nil, get_last_position_in_category(2)
   end
 
   def test_returns_last_position_in_category
-    create_product("A", [1])
-    create_product("B", [1])
+    exec_first("INSERT INTO products (title, categories_ids) VALUES ('A', '{1}');")
+    exec_first("INSERT INTO products (title, categories_ids) VALUES ('B', '{1}');")
 
     assert_equal "10000", get_last_position_in_category(1)
   end

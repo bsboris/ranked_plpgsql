@@ -32,14 +32,6 @@ module Db
     exec(sql)
   end
 
-  def create_product(title, categories = [], positions = {})
-    items = { "title" => "'#{title}'" }
-    items["categories_ids"] = "'{#{categories.join(',')}}'" if categories.any?
-    items["category_positions"] = "'#{positions.map { |k, v| "#{k}=>#{v}" }.join(',')}'" if positions.any?
-
-    exec_first(%Q{INSERT INTO products(#{items.keys.join(", ")}) VALUES (#{items.values.join(", ")}) RETURNING id;})["id"]
-  end
-
   def find_product(id)
     exec_first(%Q{SELECT * FROM products WHERE id = #{id};})
   end
