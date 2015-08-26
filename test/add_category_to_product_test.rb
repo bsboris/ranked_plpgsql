@@ -32,4 +32,6 @@ class AddCategoryToProductTest < MiniTest::Test
     assert_equal '"1"=>"10000"', product2['category_positions']
     assert_equal '{1}', product2['categories_ids']
   end
+  
+  # TODO Такие-же тесты на update
 end
