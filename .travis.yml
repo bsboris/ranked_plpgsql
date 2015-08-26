@@ -1,0 +1,12 @@
+language: ruby
+rvm:
+  - 2.0.0
+  - 2.1.0
+  - 2.2.0
+
+addons:
+  postgresql: "9.3"
+
+before_script:
+  - psql -U postgres -c 'create database rank_test;'
+  - psql -U postgres -d rank_test -c 'CREATE EXTENSION IF NOT EXISTS hstore;'
