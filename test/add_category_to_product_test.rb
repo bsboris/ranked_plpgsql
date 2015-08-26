@@ -77,4 +77,13 @@ class AddCategoryToProductTest < MiniTest::Test
     assert_equal "1=>20000, 2=>10000", find_product_positions(id_old)
     assert_equal "1=>10000", find_product_positions(id_new)
   end
+
+  def test_positions_are_unique_on_update
+    id_old = exec_first("INSERT INTO products (title, categories_ids, category_positions) VALUES ('A', '{3}', '3=>10000') RETURNING id;")["id"]
+    id_new = exec_first("INSERT INTO products (title, categories_ids, category_positions) VALUES ('B', '{1, 2}', '1=>10000, 2=>10000') RETURNING id;")["id"]
+    exec("UPDATE products SET categories_ids = '{1, 3}', category_positions = '1=>10000, 3=>10000' WHERE id = #{id_new};")
+
+    assert_equal "3=>20000", find_product_positions(id_old)
+    assert_equal "1=>10000, 3=>10000", find_product_positions(id_new)
+  end
 end

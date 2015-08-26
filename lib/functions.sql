@@ -6,19 +6,27 @@ $$SELECT 10000::integer$$ LANGUAGE sql IMMUTABLE;
 
 -- Helper functions --
 
--- Returns product rank in given category
-CREATE OR REPLACE FUNCTION ranked_get_rank_in_category(category_id integer, product_id integer) RETURNS integer AS $$
-DECLARE
-  rank integer;
+CREATE OR REPLACE FUNCTION ranked_hstore_diff(el1 hstore, el2 hstore) RETURNS hstore AS $$
 BEGIN
-  SELECT pos INTO rank
-    FROM (
-      SELECT id, rank() OVER (ORDER BY (category_positions->category_id::text)::integer asc) AS pos
-      FROM products
-      WHERE categories_ids @> ARRAY[category_id]
-    ) AS ss
-    WHERE id = product_id;
-  RETURN rank;
+  RETURN (el1 - el2) || (el2 - el1);
+END
+$$ LANGUAGE plpgsql;
+
+-- Returns product rank in given category
+CREATE OR REPLACE FUNCTION ranked_get_rank_in_category(category_id integer, product_id integer, OUT rank integer) RETURNS integer AS $$
+DECLARE
+  product_position integer;
+BEGIN
+  SELECT (category_positions->category_id::text)::integer INTO product_position FROM products WHERE id = product_id;
+
+  SELECT COUNT(
+      CASE WHEN (category_positions->category_id::text)::integer <= product_position THEN 1 ELSE NULL END
+    ) INTO rank
+    FROM products
+    WHERE categories_ids @> ARRAY[category_id];
+  IF rank = 0 THEN
+    rank := NULL;
+  END IF;
 END
 $$ LANGUAGE plpgsql;
 
@@ -127,20 +135,27 @@ CREATE TRIGGER ranked_check_product_positions BEFORE INSERT OR UPDATE ON product
 CREATE OR REPLACE FUNCTION ranked_check_product_positions_uniqueness() RETURNS trigger AS $$
 DECLARE
   category_id text;
-  existing_productd_id integer;
+  existing_productd_found integer;
   categories integer[];
+  changed_positions hstore;
 BEGIN
-  categories := akeys(NEW.category_positions);
+  IF TG_OP = 'UPDATE' THEN
+    -- Get only changed elements of hstore
+    SELECT ranked_hstore_diff(OLD.category_positions, NEW.category_positions) INTO changed_positions;
+  ELSE
+    changed_positions := NEW.category_positions;
+  END IF;
+  categories := akeys(changed_positions);
   IF array_length(categories, 1) > 0 THEN
     FOREACH category_id IN ARRAY categories LOOP
-      SELECT id INTO existing_productd_id as position
+      SELECT 1 INTO existing_productd_found
         FROM products
-        WHERE id <> NEW.id AND category_positions->category_id = NEW.category_positions->category_id;
-      EXIT WHEN existing_productd_id IS NULL;
+        WHERE id <> NEW.id AND category_positions->category_id = changed_positions->category_id;
+      CONTINUE WHEN existing_productd_found IS NULL;
 
       UPDATE products
         SET category_positions = category_positions || hstore(category_id, ((category_positions->category_id)::integer + ranked_step())::text)
-        WHERE id <> NEW.id AND (category_positions->category_id)::integer >= (NEW.category_positions->category_id::text)::integer;
+        WHERE id <> NEW.id AND (category_positions->category_id)::integer >= (changed_positions->category_id::text)::integer;
     END LOOP;
   END IF;
 
