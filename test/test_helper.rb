@@ -9,6 +9,10 @@ class MiniTest::Test
     connection.exec(sql, &block)
   end
 
+  def exec_first(sql, &block)
+    exec(sql, &block).first
+  end
+
   def unescape(string)
     string.gsub(/"/, "")
   end
