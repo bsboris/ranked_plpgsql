@@ -1,6 +1,6 @@
 require "test_helper"
 
-class GetProductWithRankInCategoryTest < MiniTest::Test
+class GetPositionForRankInCategoryTest < MiniTest::Test
   def setup
     super
 
@@ -11,7 +11,7 @@ class GetProductWithRankInCategoryTest < MiniTest::Test
   end
 
   def get_product_with_rank_in_category(category, rank)
-    exec("SELECT ranked_get_product_with_rank_in_category(#{category}, #{rank})").first["ranked_get_product_with_rank_in_category"]
+    exec_first("SELECT ranked_get_product_with_rank_in_category(#{category}, #{rank}) as rank")["rank"]
   end
 
   def test_gets_product

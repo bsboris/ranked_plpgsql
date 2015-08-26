@@ -14,7 +14,7 @@ class MiniTest::Test
   end
 
   def unescape(string)
-    string.gsub(/"/, "")
+    string.to_s.gsub(/"/, "")
   end
 
   def connection
@@ -35,7 +35,7 @@ class MiniTest::Test
   end
 
   def create_tables
-    exec("CREATE TABLE IF NOT EXISTS products (id serial, title text, categories_ids integer[], category_positions hstore);")
+    exec("CREATE TABLE IF NOT EXISTS products (id serial, title text, categories_ids integer[] NOT NULL DEFAULT '{}', category_positions hstore NOT NULL DEFAULT '');")
   end
 
   def load_sql
@@ -44,17 +44,22 @@ class MiniTest::Test
   end
 
   def create_product(title, categories = [], positions = {})
-    categories = "{#{categories.join(',')}}"
-    positions = "#{positions.map { |k, v| "#{k}=>#{v}" }.join(',')}"
+    items = { "title" => "'#{title}'" }
+    items["categories_ids"] = "'{#{categories.join(',')}}'" if categories.any?
+    items["category_positions"] = "'#{positions.map { |k, v| "#{k}=>#{v}" }.join(',')}'" if positions.any?
 
-    exec(%Q{INSERT INTO products(title, categories_ids, category_positions) VALUES ('#{title}', '#{categories}', '#{positions}'::hstore) RETURNING id;}).first['id']
+    exec_first(%Q{INSERT INTO products(#{items.keys.join(", ")}) VALUES (#{items.values.join(", ")}) RETURNING id;})["id"]
   end
 
   def find_product(id)
-    exec(%Q{SELECT * FROM products WHERE id = #{id};}).first
+    exec_first(%Q{SELECT * FROM products WHERE id = #{id};})
   end
 
   def find_product_positions(id)
     unescape(find_product(id)["category_positions"])
+  end
+
+  def find_product_categories(id)
+    unescape(find_product(id)["categories_ids"])
   end
 end

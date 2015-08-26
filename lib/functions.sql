@@ -32,7 +32,7 @@ END
 $$ LANGUAGE plpgsql;
 
 -- Return position value for the product with specific rank in given categrory or NULL if such rank wasn't found
-CREATE OR REPLACE FUNCTION ranked_get_product_with_rank_in_category(category_id integer, rank integer, OUT pos integer) AS $$
+CREATE OR REPLACE FUNCTION ranked_get_position_for_rank_in_category(category_id integer, rank integer, OUT pos integer) AS $$
 BEGIN
   IF rank <= 0 THEN
     pos := NULL;
@@ -61,8 +61,8 @@ BEGIN
   IF ranked_get_rank_in_category(category_id, product_id) = rank THEN
     RETURN;
   END IF;
-  SELECT ranked_get_product_with_rank_in_category(category_id, rank - 1) INTO upper;
-  SELECT ranked_get_product_with_rank_in_category(category_id, rank) INTO lower;
+  SELECT ranked_get_position_for_rank_in_category(category_id, rank - 1) INTO upper;
+  SELECT ranked_get_position_for_rank_in_category(category_id, rank) INTO lower;
   IF upper IS NULL AND lower IS NULL THEN
     SELECT ranked_get_last_position_in_category(category_id) INTO pos;
     IF pos IS NOT NULL THEN
@@ -92,22 +92,30 @@ DECLARE
   last_position integer;
   position integer;
 BEGIN
-  FOREACH category_id IN ARRAY akeys(NEW.category_positions) LOOP
-    IF NOT category_id = ANY(NEW.categories_ids) THEN
-      NEW.category_positions := delete(NEW.category_positions, category_id::text);
-    END IF;
-  END LOOP;
+  IF array_length(akeys(NEW.category_positions), 1) > 0 THEN
+    FOREACH category_id IN ARRAY akeys(NEW.category_positions) LOOP
+      IF NOT category_id = ANY(NEW.categories_ids) THEN
+        NEW.category_positions := delete(NEW.category_positions, category_id::text);
+      END IF;
+    END LOOP;
+  END IF;
 
-  FOREACH category_id IN ARRAY NEW.categories_ids LOOP
-    CONTINUE WHEN (NEW.category_positions ? category_id::text) AND ((NEW.category_positions->category_id::text) IS NOT NULL);
-    SELECT ranked_get_last_position_in_category(category_id) INTO last_position;
-    IF last_position IS NOT NULL THEN
-      position := last_position + ranked_step();
-    ELSE
-      position := 0;
-    END IF;
-    NEW.category_positions := NEW.category_positions || hstore(category_id::text, position::text);
-  END LOOP;
+  IF array_length(NEW.categories_ids, 1) > 0 THEN
+    FOREACH category_id IN ARRAY NEW.categories_ids LOOP
+      CONTINUE WHEN (NEW.category_positions ? category_id::text) AND ((NEW.category_positions->category_id::text) IS NOT NULL);
+      SELECT ranked_get_last_position_in_category(category_id) INTO last_position;
+      IF last_position IS NOT NULL THEN
+        position := last_position + ranked_step();
+      ELSE
+        position := 0;
+      END IF;
+      IF NEW.category_positions IS NULL THEN
+        NEW.category_positions := hstore(category_id::text, position::text);
+      ELSE
+        NEW.category_positions := NEW.category_positions || hstore(category_id::text, position::text);
+      END IF;
+    END LOOP;
+  END IF;
 
   RETURN NEW;
 END
@@ -121,16 +129,19 @@ DECLARE
   category_id text;
   existing_productd_id integer;
 BEGIN
-  FOREACH category_id IN ARRAY akeys(NEW.category_positions) LOOP
-    SELECT id INTO existing_productd_id as position
-      FROM products
-      WHERE id <> NEW.id AND category_positions->category_id = NEW.category_positions->category_id;
-    EXIT WHEN existing_productd_id IS NULL;
+  IF array_length(akeys(NEW.category_positions), 1) > 0 THEN
+    FOREACH category_id IN ARRAY akeys(NEW.category_positions) LOOP
+      SELECT id INTO existing_productd_id as position
+        FROM products
+        WHERE id <> NEW.id AND category_positions->category_id = NEW.category_positions->category_id;
+      EXIT WHEN existing_productd_id IS NULL;
 
-    UPDATE products
-      SET category_positions = category_positions || hstore(category_id, ((category_positions->category_id)::integer + ranked_step())::text)
-      WHERE id <> NEW.id AND (category_positions->category_id)::integer >= (NEW.category_positions->category_id::text)::integer;
-  END LOOP;
+      UPDATE products
+        SET category_positions = category_positions || hstore(category_id, ((category_positions->category_id)::integer + ranked_step())::text)
+        WHERE id <> NEW.id AND (category_positions->category_id)::integer >= (NEW.category_positions->category_id::text)::integer;
+    END LOOP;
+  END IF;
+
   RETURN NEW;
 END
 $$ LANGUAGE plpgsql;
