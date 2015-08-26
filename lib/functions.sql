@@ -75,7 +75,7 @@ BEGIN
   ELSIF lower IS NULL THEN
     pos := upper + ranked_step();
   ELSE
-    pos := ceil((lower - upper) / 2);
+    pos := upper + ceil((lower - upper) / 2);
   END IF;
 
   UPDATE products SET category_positions = category_positions || hstore(category_id::text, pos::text) WHERE id = product_id;

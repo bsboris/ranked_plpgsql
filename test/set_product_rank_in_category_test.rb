@@ -11,11 +11,11 @@ class SetProductRankInCategoryTest < MiniTest::Test
   end
 
   def test_sets_product_between_products
-    exec("SELECT ranked_set_product_rank_in_category(1, #{@id_d}, 2);")
+    exec("SELECT ranked_set_product_rank_in_category(1, #{@id_d}, 3);")
 
-    assert_equal "1=>5000", find_product_positions(@id_d)
-    assert_equal "1=>0", find_product_positions(@id_a)
+    assert_equal "1=>15000", find_product_positions(@id_d)
     assert_equal "1=>10000", find_product_positions(@id_b)
+    assert_equal "1=>20000", find_product_positions(@id_c)
   end
 
   def test_sets_product_on_top
