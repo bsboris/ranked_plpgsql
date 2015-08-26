@@ -3,6 +3,10 @@
 To run tests:
 
     createdb rank_test
-    plsql#=> CREATE EXTENSION hstore;
+    echo 'CREATE EXTENSION hstore;' | psql rank_test
     bundle
     rake
+
+# Development
+
+    bundle exec guard
