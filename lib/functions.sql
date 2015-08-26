@@ -15,7 +15,7 @@ BEGIN
     FROM (
       SELECT id, rank() OVER (ORDER BY (category_positions->category_id::text)::integer asc) AS pos
       FROM products
-      WHERE category_id = ANY(categories_ids)
+      WHERE categories_ids @> ARRAY[category_id]
     ) AS ss
     WHERE id = product_id;
   RETURN rank;
@@ -27,7 +27,7 @@ CREATE OR REPLACE FUNCTION ranked_get_last_position_in_category(category_id inte
 BEGIN
   SELECT MAX((category_positions->category_id::varchar)::integer) INTO last_position
     FROM products
-    WHERE category_id = ANY(categories_ids);
+    WHERE categories_ids @> ARRAY[category_id];
 END
 $$ LANGUAGE plpgsql;
 
@@ -40,7 +40,7 @@ BEGIN
   END IF;
   SELECT category_positions->category_id::text INTO pos
     FROM products
-    WHERE category_id = ANY(categories_ids)
+    WHERE categories_ids @> ARRAY[category_id]
     ORDER BY (category_positions->category_id::text)::integer asc
     OFFSET rank - 1
     LIMIT 1;
@@ -94,7 +94,7 @@ DECLARE
 BEGIN
   IF array_length(akeys(NEW.category_positions), 1) > 0 THEN
     FOREACH category_id IN ARRAY akeys(NEW.category_positions) LOOP
-      IF NOT category_id = ANY(NEW.categories_ids) THEN
+      IF NOT NEW.categories_ids @> ARRAY[category_id] category_id THEN
         NEW.category_positions := delete(NEW.category_positions, category_id::text);
       END IF;
     END LOOP;
@@ -128,9 +128,11 @@ CREATE OR REPLACE FUNCTION ranked_check_product_positions_uniqueness() RETURNS t
 DECLARE
   category_id text;
   existing_productd_id integer;
+  categories integer[];
 BEGIN
-  IF array_length(akeys(NEW.category_positions), 1) > 0 THEN
-    FOREACH category_id IN ARRAY akeys(NEW.category_positions) LOOP
+  categories := akeys(NEW.category_positions);
+  IF array_length(categories, 1) > 0 THEN
+    FOREACH category_id IN ARRAY categories LOOP
       SELECT id INTO existing_productd_id as position
         FROM products
         WHERE id <> NEW.id AND category_positions->category_id = NEW.category_positions->category_id;
