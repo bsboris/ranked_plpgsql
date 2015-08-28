@@ -19,11 +19,9 @@ DECLARE
 BEGIN
   SELECT (category_positions->category_id::text)::integer INTO product_position FROM products WHERE id = product_id;
 
-  SELECT COUNT(
-      CASE WHEN (category_positions->category_id::text)::integer <= product_position THEN 1 ELSE NULL END
-    ) INTO rank
+  SELECT COUNT(1) INTO rank
     FROM products
-    WHERE categories_ids @> ARRAY[category_id];
+    WHERE categories_ids @> ARRAY[category_id] AND (category_positions->category_id::text)::integer <= product_position;
   IF rank = 0 THEN
     rank := NULL;
   END IF;
@@ -150,7 +148,7 @@ BEGIN
     FOREACH category_id IN ARRAY categories LOOP
       SELECT 1 INTO existing_productd_found
         FROM products
-        WHERE id <> NEW.id AND category_positions->category_id = changed_positions->category_id;
+        WHERE categories_ids @> ARRAY[category_id::integer] AND (id > NEW.id OR id < NEW.id) AND category_positions->category_id = changed_positions->category_id;
       CONTINUE WHEN existing_productd_found IS NULL;
 
       UPDATE products

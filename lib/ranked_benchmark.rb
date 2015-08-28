@@ -15,7 +15,7 @@ class RankedBenchmark
     load_sql
 
     Benchmark.bm(20) do |x|
-      x.report("Create products bulk") do
+      x.report("Create products") do
         (1..N_CATEGORIES).each do |cat|
           (1..N_PRODUCTS).to_a.each_slice(500) do |slice|
             values = []
@@ -34,7 +34,7 @@ class RankedBenchmark
         end
       end
 
-      x.report("Select all products") do
+      x.report("Select products") do
         (1..N_CATEGORIES).each do |cat|
           exec("SELECT id, title, ranked_get_rank_in_category(#{cat}, id) as rank FROM products WHERE categories_ids @> ARRAY[#{cat}] ORDER BY rank;")
         end
